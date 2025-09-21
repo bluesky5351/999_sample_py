@@ -1,135 +1,106 @@
-# ===== セットアップ =====
-# pip install PyPDF2 janome wordcloud
-
-from pathlib import Path
 import re
-from collections import Counter
 from typing import Optional
+from fugashi import Tokenizer
 
-import PyPDF2
-from janome.tokenizer import Tokenizer
-from wordcloud import WordCloud
-
-
-# ---------- 1) PDFからテキスト抽出 ----------
-def extract_text_from_pdf(pdf_path: Path) -> str:
-    text_parts = []
-    with open(pdf_path, "rb") as f:
-        reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            t = page.extract_text() or ""
-            text_parts.append(t)
-    return "\n".join(text_parts)
-
-
-# ---------- 2) 形態素解析（日本語＋英単語対応） ----------
 def tokenize_ja_en(text: str, extra_stopwords: Optional[set[str]] = None) -> list[str]:
     t = Tokenizer()
-
-    # 日本語の基本ストップワード
+    # 日本語基本ストップワード
     stopwords = set("""
         する なる ある いる こと これ それ あれ ため よう もの ところ
         私 僕 です ます でした ません では から まで など また そして
-        に より ので とか へ が を による における に対して として
-        ー ― ～ ・ … 　 の は が を に で と も だ です ね よ にして
+        に により ので とか へ が を による における に対して として
+        ー ― ～ ・ … 　 の は が を に で と も だ です ね よ
     """.split())
-
-    # 英語のストップワード（よくある機能語）
+    # 英語の簡易ストップワード（必要なら拡張可）
     english_stopwords = set("""
         the a an and or but if then else when at to from by for of in on with 
         this that these those is are was were be been being do does did have has had
     """.split())
-
     stopwords |= english_stopwords
-
-    # 外部ファイル stopwords.txt の追加
+    # 外部ファイルの追加
     if extra_stopwords:
-        stopwords |= {w.lower() for w in extra_stopwords}
-
+        stopwords |= extra_stopwords
     tokens: list[str] = []
-
     for token in t.tokenize(text):
         base = token.base_form
         pos = token.part_of_speech.split(",")[0]
         surface = token.surface
-
-        # 日本語 → 名詞/形容詞/動詞のみ残す
+        # 日本語の名詞/形容詞/動詞はそのまま
         if pos in {"名詞", "形容詞", "動詞"}:
             word = base if base != "*" else surface
         else:
-            # 英単語やその他はそのまま
+            # 日本語以外（英単語など）は原形そのまま使う
             word = surface
-
-        # 記号除外
+        # 記号は除外
         if re.fullmatch(r"[！-／：-＠［-｀｛-～、-〜。・「」『』（）【】…―ー\s]+", word):
             continue
-
         if len(word) <= 1:
             continue
-
-        # 英語は小文字化してストップワードチェック
-        if word.lower() in stopwords:
+        if word.lower() in stopwords:  # 英語小文字化して比較
             continue
-
         tokens.append(word)
-
     return tokens
 
-
-# ---------- 3) ワードクラウド生成 ----------
-def make_wordcloud(tokens: list[str],
-                   out_path: str = "wordcloud.png",
-                   font_path: Optional[str] = None):
-    freqs = Counter(tokens)
-
-    if font_path is None:
-        raise ValueError("font_path を日本語フォントのパスに設定してください。")
-
-    wc = WordCloud(
-        width=1600,
-        height=900,
-        background_color="white",
-        font_path=font_path,
-        collocations=False,
-        regexp=r"[^ \f\n\r\t\v]+"
-    ).generate_from_frequencies(freqs)
-
-    wc.to_file(out_path)
-    print(f"Saved: {out_path}")
-
-
-# ---------- 4) 実行例（pdfフォルダ内すべて対象） ----------
 if __name__ == "__main__":
-    BASE_DIR = Path(__file__).parent
-    PDF_DIR = BASE_DIR / "pdf"
-    STOPWORDS_FILE = BASE_DIR / "stopwords.txt"
-    FONT_PATH = "C:\\Windows\\Fonts\\meiryo.ttc"  # ←環境に合わせて修正
-
-    # PDFファイルを取得
-    pdf_files = sorted(PDF_DIR.glob("*.pdf"))
-    if not pdf_files:
-        print("pdf フォルダにPDFが見つかりませんでした。")
-        exit()
-
-    print(f"対象PDFファイル数: {len(pdf_files)}")
-
-    # stopwords.txt を読み込み
-    extra_stopwords = set()
-    if STOPWORDS_FILE.exists():
-        with open(STOPWORDS_FILE, "r", encoding="utf-8") as f:
-            extra_stopwords = {line.strip() for line in f if line.strip()}
-        print(f"除外ワード数: {len(extra_stopwords)}")
-    else:
-        print("stopwords.txt が見つかりません（追加ストップワードなしで実行します）")
-
-    # テキスト結合
-    all_text = ""
-    for pdf_path in pdf_files:
-        print(f"読み込み中: {pdf_path.name}")
-        all_text += extract_text_from_pdf(pdf_path) + "\n"
-
-    # トークン化（日本語＋英語対応）
-    tokens = tokenize_ja_en(all_text, extra_stopwords=extra_stopwords)
-
-    # ワードクラウド生成
-    make_wordcloud(tokens, out_path="wordcloud.png", font_path=FONT_PATH)
+    print("=== テキストマイニング ツール ===")
+    print()
+    
+    while True:
+        print("1. テキストを入力してトークナイズ")
+        print("2. ファイルからテキストを読み込んでトークナイズ")
+        print("3. 終了")
+        print()
+        
+        choice = input("選択してください (1-3): ").strip()
+        
+        if choice == "1":
+            print("\n--- テキスト入力モード ---")
+            text = input("解析したいテキストを入力してください: ")
+            if text.strip():
+                print("\n解析中...")
+                tokens = tokenize_ja_en(text)
+                print(f"\nトークン数: {len(tokens)}")
+                print("トークン一覧:")
+                for i, token in enumerate(tokens, 1):
+                    print(f"{i:3d}: {token}")
+            else:
+                print("テキストが入力されていません。")
+        
+        elif choice == "2":
+            print("\n--- ファイル読み込みモード ---")
+            file_path = input("ファイルパスを入力してください: ").strip()
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+                print(f"\nファイルを読み込みました: {file_path}")
+                print("解析中...")
+                tokens = tokenize_ja_en(text)
+                print(f"\nトークン数: {len(tokens)}")
+                print("トークン一覧:")
+                for i, token in enumerate(tokens, 1):
+                    print(f"{i:3d}: {token}")
+                    
+                # 結果をファイルに保存するか確認
+                save = input("\n結果をファイルに保存しますか？ (y/n): ").strip().lower()
+                if save in ['y', 'yes']:
+                    output_path = file_path.replace('.txt', '_tokens.txt')
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        for token in tokens:
+                            f.write(token + '\n')
+                    print(f"結果を保存しました: {output_path}")
+                    
+            except FileNotFoundError:
+                print(f"ファイルが見つかりません: {file_path}")
+            except Exception as e:
+                print(f"エラーが発生しました: {e}")
+        
+        elif choice == "3":
+            print("プログラムを終了します。")
+            break
+        
+        else:
+            print("無効な選択です。1-3の数字を入力してください。")
+        
+        print("\n" + "="*50 + "\n")
+    
+    input("Enterキーを押して終了してください...")
