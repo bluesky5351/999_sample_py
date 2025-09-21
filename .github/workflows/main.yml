@@ -33,10 +33,10 @@ jobs:
     - name: Build EXE with PyInstaller
       run: |
         # 基本的なワンファイルEXE作成
-        pyinstaller --onefile --noconsole main.py
+        pyinstaller --onefile --noconsole textmining.py
         
         # アイコンやその他オプションを使用する場合
-        # pyinstaller --onefile --noconsole --icon=icon.ico --name=MyApp main.py
+        # pyinstaller --onefile --noconsole --icon=icon.ico --name=MyApp textmining.py
         
         # より詳細な設定の場合（specファイルを使用）
         # pyinstaller main.spec
