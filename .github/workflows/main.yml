@@ -33,17 +33,24 @@ jobs:
     - name: Build EXE with PyInstaller
       run: |
         # 基本的なワンファイルEXE作成
-        pyinstaller --onefile --noconsole textmining.py
+        pyinstaller --onefile --noconsole main.py
         
         # アイコンやその他オプションを使用する場合
-        # pyinstaller --onefile --noconsole --icon=icon.ico --name=MyApp textmining.py
+        # pyinstaller --onefile --noconsole --icon=icon.ico --name=MyApp main.py
         
         # より詳細な設定の場合（specファイルを使用）
         # pyinstaller main.spec
     
     - name: List dist directory (デバッグ用)
       run: |
-        ls -la dist/
+        dir dist\
+        echo "Contents of dist directory:"
+        if (Test-Path "dist\*.exe") {
+          echo "EXE files found:"
+          Get-ChildItem -Path "dist\*.exe" | ForEach-Object { echo $_.Name }
+        } else {
+          echo "No EXE files found"
+        }
     
     - name: Upload EXE as artifact
       uses: actions/upload-artifact@v4
