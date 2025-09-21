@@ -25,21 +25,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        # requirements.txtがある場合
+        # fugashiと日本語形態素解析に必要なパッケージ
+        pip install fugashi unidic-lite
+        # requirements.txtがある場合（オプション）
         if (Test-Path requirements.txt) { pip install -r requirements.txt }
-        # 必要に応じて個別のパッケージをインストール
-        # pip install numpy pandas tkinter
     
     - name: Build EXE with PyInstaller
       run: |
-        # 基本的なワンファイルEXE作成
-        pyinstaller --onefile --noconsole main.py
+        # fugashiの辞書データを含めてEXEを作成
+        pyinstaller --onefile --console --collect-data fugashi --collect-data unidic_lite textmining.py
         
-        # アイコンやその他オプションを使用する場合
-        # pyinstaller --onefile --noconsole --icon=icon.ico --name=MyApp main.py
-        
-        # より詳細な設定の場合（specファイルを使用）
-        # pyinstaller main.spec
+        # GUIモードにしたい場合は --console を --noconsole に変更
+        # pyinstaller --onefile --noconsole --collect-data fugashi --collect-data unidic_lite textmining.py
     
     - name: List dist directory (デバッグ用)
       run: |
