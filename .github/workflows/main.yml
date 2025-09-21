@@ -1,0 +1,63 @@
+name: Build EXE with PyInstaller
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'  # タグがv1.0.0などの形式の時にリリース作成
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # requirements.txtがある場合
+        if (Test-Path requirements.txt) { pip install -r requirements.txt }
+        # 必要に応じて個別のパッケージをインストール
+        # pip install numpy pandas tkinter
+    
+    - name: Build EXE with PyInstaller
+      run: |
+        # 基本的なワンファイルEXE作成
+        pyinstaller --onefile --noconsole main.py
+        
+        # アイコンやその他オプションを使用する場合
+        # pyinstaller --onefile --noconsole --icon=icon.ico --name=MyApp main.py
+        
+        # より詳細な設定の場合（specファイルを使用）
+        # pyinstaller main.spec
+    
+    - name: List dist directory (デバッグ用)
+      run: |
+        ls -la dist/
+    
+    - name: Upload EXE as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-executable
+        path: dist/*.exe
+        retention-days: 30
+    
+    # タグがプッシュされた時のみリリース作成
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
